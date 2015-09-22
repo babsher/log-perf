@@ -40,7 +40,7 @@ public class SysOutJob extends Job {
 
   @Override
   void logElapsedTime(Stopwatch stopwatch) {
-    if(check(Level.Info)) {
+    if(check(Level.Warn)) {
       System.out.println(this.id + " completed in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
     }
   }
