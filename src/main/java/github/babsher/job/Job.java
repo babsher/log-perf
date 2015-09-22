@@ -1,4 +1,4 @@
-package github.babsher;
+package github.babsher.job;
 
 import com.google.common.base.Stopwatch;
 
@@ -11,8 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.concurrent.Callable;
 
-public abstract class Job implements Runnable {
+import github.babsher.config.Config;
+
+public abstract class Job implements Callable<Stopwatch> {
+
+  protected final Config config;
 
   public enum Level {
     Trace(0),
@@ -27,26 +32,26 @@ public abstract class Job implements Runnable {
     }
   }
 
-  protected final Level logLevel;
   protected final Integer id;
 
-  public Job(Integer id, Level logLevel) {
-    this.logLevel = logLevel;
+  public Job(Config config, Integer id) {
+    this.config = config;
     this.id = id;
   }
 
-  public void run() {
+  @Override
+  public Stopwatch call() {
     Stopwatch stopwatch = Stopwatch.createStarted();
     FatClass fatty = new FatClass();
     try {
       // compute PI
-      double pi = computePi(App.SIZE);
+      double pi = computePi(config.getSize());
       logPiTotal(pi);
 
       // Write PI to disk
       Path file = FileSystems.getDefault().getPath("data", id + ".txt");
       try (BufferedWriter w = Files.newBufferedWriter(file, Charset.defaultCharset())) {
-        for (int i = 0; i < App.SIZE; i++) {
+        for (int i = 0; i < config.getSize(); i++) {
           w.write(id + "-" + i + " " + pi + "\n");
           logFatty(fatty);
         }
@@ -69,8 +74,8 @@ public abstract class Job implements Runnable {
       e.printStackTrace();
     }
     stopwatch.stop();
-    App.results.offer(stopwatch);
     logElapsedTime(stopwatch);
+    return stopwatch;
   }
 
 
@@ -80,21 +85,20 @@ public abstract class Job implements Runnable {
       sequenceFormula = sequenceFormula + ((1.0 / (2.0 * counter - 1.0)) - (1.0 / (2.0 * counter + 1.0)));
       logPiPart(sequenceFormula);
     }
-    double pi = 4 * sequenceFormula;
-    return pi;
+    return 4 * sequenceFormula;
   }
 
-  abstract void logFatty(FatClass fatty);
+  public abstract void logFatty(FatClass fatty);
 
-  abstract void logPiTotal(double pi);
+  public abstract void logPiTotal(double pi);
 
-  abstract void logPiPart(double pi);
+  public abstract void logPiPart(double pi);
 
-  abstract void logHash(String hash);
+  public abstract void logHash(String hash);
 
-  abstract void logElapsedTime(Stopwatch stopwatch);
+  public abstract void logElapsedTime(Stopwatch stopwatch);
 
-  public static class FatClass {
+  public class FatClass {
     @Override
     public String toString() {
       try {
@@ -102,8 +106,8 @@ public abstract class Job implements Runnable {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
-      StringBuffer str = new StringBuffer("FatClass{}");
-      for (int i = 0; i < App.STRING_SIZE; i++) {
+      StringBuilder str = new StringBuilder("FatClass{}");
+      for (int i = 0; i < config.getStringSize(); i++) {
         str.append("char");
       }
       return str.toString();
